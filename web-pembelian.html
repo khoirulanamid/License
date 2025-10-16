@@ -46,8 +46,8 @@
     </div>
 
     <script>
-        // Ganti dengan URL Web App Google Script Anda
-        const SCRIPT_URL = 'URL_WEB_APP_GOOGLE_SCRIPT_ANDA';
+        // URL Web App Google Script Anda sudah diisi.
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznSNUyIvFlh_sxaqrMT0bvLRYo321uukcNpXRKb0za_pUrfodr8nvIE2KDtC_2FGYoLg/exec';
 
         const selectionView = document.getElementById('selection-view');
         const paymentView = document.getElementById('payment-view');
@@ -78,7 +78,6 @@
                     selectionView.classList.add('hidden');
                     paymentView.classList.remove('hidden');
 
-                    // Mulai memeriksa status pembayaran setiap 5 detik
                     checkInterval = setInterval(() => checkPaymentStatus(data.order_id), 5000);
                 } else {
                     alert('Gagal membuat transaksi: ' + data.message);
