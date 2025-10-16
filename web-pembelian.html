@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beli Lisensi - Topaz Video Upscaler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'SF Pro Display', sans-serif; }
+        .loader { border-top-color: #3498db; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @-webkit-keyframes spinner { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full">
+        <h1 class="text-3xl font-bold text-center mb-6">Beli Lisensi Aplikasi</h1>
+
+        <div id="selection-view">
+            <label for="duration" class="block text-sm font-medium mb-2">Pilih Durasi Lisensi:</label>
+            <select id="duration" class="w-full bg-gray-700 text-white p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="15" data-price="10000">15 Hari - Rp 10.000</option>
+                <option value="30" data-price="20000" selected>30 Hari - Rp 20.000</option>
+                <option value="60" data-price="40000">60 Hari - Rp 40.000</option>
+            </select>
+            <button id="pay-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md mt-6 transition duration-300">
+                Bayar dengan QRIS
+            </button>
+        </div>
+
+        <div id="payment-view" class="hidden text-center">
+            <p class="mb-4">Silakan pindai kode QRIS di bawah ini menggunakan aplikasi pembayaran Anda.</p>
+            <div id="qris-container" class="flex justify-center items-center bg-white p-4 rounded-md">
+                <!-- QRIS code will be injected here -->
+            </div>
+            <p class="mt-4 text-sm text-gray-400">Total: <span id="total-price" class="font-bold"></span></p>
+            <p class="mt-2 text-yellow-400 font-semibold">Menunggu Pembayaran...</p>
+            <div class="mt-4 flex justify-center">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div>
+            </div>
+            <p id="license-key-display" class="mt-6 hidden bg-gray-700 p-3 rounded-md">
+                <span class="block text-gray-400">Lisensi Anda (harap simpan):</span>
+                <strong id="license-key" class="text-lg text-green-400 break-all"></strong>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Ganti dengan URL Web App Google Script Anda
+        const SCRIPT_URL = 'URL_WEB_APP_GOOGLE_SCRIPT_ANDA';
+
+        const selectionView = document.getElementById('selection-view');
+        const paymentView = document.getElementById('payment-view');
+        const durationSelect = document.getElementById('duration');
+        const payButton = document.getElementById('pay-button');
+        const qrisContainer = document.getElementById('qris-container');
+        const totalPriceDisplay = document.getElementById('total-price');
+        const licenseKeyDisplay = document.getElementById('license-key-display');
+        const licenseKeyElement = document.getElementById('license-key');
+
+        let checkInterval;
+
+        payButton.addEventListener('click', async () => {
+            const selectedOption = durationSelect.options[durationSelect.selectedIndex];
+            const duration = selectedOption.value;
+            const price = selectedOption.dataset.price;
+            
+            payButton.disabled = true;
+            payButton.textContent = 'Memproses...';
+
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=createTransaction&duration=${duration}&price=${price}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    totalPriceDisplay.textContent = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(price);
+                    qrisContainer.innerHTML = `<img src="${data.qris_url}" alt="QRIS Code">`;
+                    selectionView.classList.add('hidden');
+                    paymentView.classList.remove('hidden');
+
+                    // Mulai memeriksa status pembayaran setiap 5 detik
+                    checkInterval = setInterval(() => checkPaymentStatus(data.order_id), 5000);
+                } else {
+                    alert('Gagal membuat transaksi: ' + data.message);
+                    payButton.disabled = false;
+                    payButton.textContent = 'Bayar dengan QRIS';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan. Silakan coba lagi.');
+                payButton.disabled = false;
+                payButton.textContent = 'Bayar dengan QRIS';
+            }
+        });
+
+        async function checkPaymentStatus(orderId) {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=checkStatus&order_id=${orderId}`);
+                const data = await response.json();
+
+                if (data.status === 'paid') {
+                    clearInterval(checkInterval);
+                    document.querySelector('#payment-view .text-yellow-400').textContent = 'Pembayaran Berhasil!';
+                    document.querySelector('#payment-view .text-yellow-400').classList.remove('text-yellow-400');
+                    document.querySelector('#payment-view .text-yellow-400').classList.add('text-green-400');
+                    document.querySelector('#payment-view .loader').classList.add('hidden');
+                    
+                    licenseKeyElement.textContent = data.license_key;
+                    licenseKeyDisplay.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
